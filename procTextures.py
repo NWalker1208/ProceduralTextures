@@ -1,5 +1,6 @@
 import sys, pygame, math
-import noise
+import noise, random
+
 
 def clamp(fl, mn, mx):
     return min(mx, max(mn, fl))
@@ -9,18 +10,23 @@ def roundToInt(fl):
     return int(round(fl))
 
 
+def newNoiseSeed():
+    return random.randint(-1000, 1000), random.randint(-1000, 1000), random.randint(-1000, 1000), random.randint(-1000, 1000)
+
+
+xOffset, yOffset, zOffset, wOffset = 0, 0, 0, 0
 # X and Y tile from 0 to 1
-def tileNoise(u, v, mn = -1, mx = 1, u_scale = 1, v_scale = 1, octaves = 1, x = 0, y = 0, z = 0, w = 0):
+def tileNoise(u, v, mn = -1, mx = 1, u_scale = 1, v_scale = 1, octaves = 1, persistence = 0.5, lacunarity = 2.0):
     angleU = (u % 1) * 2 * math.pi
     angleV = (v % 1) * 2 * math.pi
 
     rU = 1 / (2 * math.pi * u_scale)
     rV = 1 / (2 * math.pi * v_scale)
     
-    x += math.cos(angleU) * rU
-    y += math.sin(angleU) * rU
-    z += math.cos(angleV) * rV
-    w += math.sin(angleV) * rV
+    x = xOffset + math.cos(angleU) * rU
+    y = yOffset + math.sin(angleU) * rU
+    z = zOffset + math.cos(angleV) * rV
+    w = wOffset + math.sin(angleV) * rV
     
     return (clamp(noise.snoise4(x, y, z, w, octaves) + 1, 0, 2) / 2) * (mx - mn) + mn
 
@@ -49,11 +55,11 @@ def mapFloatToColorMap(colorMap, fl):
 
 
 
-roadColors = pygame.image.load("colormaps/road2.bmp")
+roadColors = pygame.image.load("colormaps/road.bmp")
 
 def roadShader(x, y, tileWidth, tileHeight, scale = 1, offsetX = 0, offsetY = 0):
         scale *= 0.02
-        c = tileNoise(*(x / tileWidth + offsetX, y / tileHeight + offsetY), *(0, 1), scale, scale, 10)
+        c = tileNoise(*(x / tileWidth + offsetX, y / tileHeight + offsetY), *(0, 1), scale, scale, 10, 0.5, 2.0)
 
         return mapFloatToColorMap(roadColors, c) #normalColorRGB(r, g, b)
 
@@ -61,8 +67,8 @@ def roadShader(x, y, tileWidth, tileHeight, scale = 1, offsetX = 0, offsetY = 0)
 worldColors = pygame.image.load("colormaps/world.bmp")
 
 def worldShader(x, y, tileWidth, tileHeight, scale = 1, offsetX = 0, offsetY = 0):
-        scale *= 0.5
-        c = tileNoise(*(x / tileWidth + offsetX, y / tileHeight + offsetY), *(0, 1), scale, scale, 10)
+        scale *= 0.25
+        c = tileNoise(*(x / tileWidth + offsetX, y / tileHeight + offsetY), *(0, 1), scale, scale, 10, 0.3, 3.0)
 
         return mapFloatToColorMap(worldColors, c)
 
@@ -71,10 +77,9 @@ woodColors = pygame.image.load("colormaps/wood.bmp")
 
 def woodShader(x, y, tileWidth, tileHeight, scale = 1, offsetX = 0, offsetY = 0):
         scale *= 0.05
-        c = tileNoise(*(x / tileWidth + offsetX, y / tileHeight + offsetY), *(0, 1), scale, scale * 4, 10)
+        c = tileNoise(*(x / tileWidth + offsetX, y / tileHeight + offsetY), *(0, 1), scale, scale * 4, 10, 0.5, 2.0)
 
         return mapFloatToColorMap(woodColors, c)
-
 
 
 def drawShader(texture, shader, tileWidth, tileHeight, scale = 1, offsetX = 0, offsetY = 0):
@@ -95,6 +100,10 @@ def updateDisplay(screen, texture):
 
 
 pygame.init()
+
+random.seed()
+xOffset, yOffset, zOffset, wOffset = newNoiseSeed()
+print("Coordinate offsets are", xOffset, yOffset, zOffset, wOffset)
 
 size = width, height = 640, 640
 speed = [2, 2]
